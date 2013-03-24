@@ -26,6 +26,12 @@ func Marshal(v interface{}) ([]byte, error) {
 	return e.Bytes(), nil
 }
 
+// Marshaler is the interface implemented by objects that
+// can marshal themselves into valid JSON.
+type Marshaler interface {
+	MarshalJSON() ([]byte, error)
+}
+
 // An UnsupportedTypeError is returned by Marshal when attempting
 // to encode an unsupported value type.
 type UnsupportedTypeError struct {
@@ -134,6 +140,26 @@ func (e *encodeState) reflectValue(v reflect.Value) {
 func (e *encodeState) reflectValueQuoted(v reflect.Value, quoted bool) {
 	if !v.IsValid() {
 		e.WriteString("null")
+		return
+	}
+
+	m, ok := v.Interface().(Marshaler)
+	if !ok {
+		// T doesn't match the interface. Check against *T too.
+		if v.Kind() != reflect.Ptr && v.CanAddr() {
+			m, ok = v.Addr().Interface().(Marshaler)
+			if ok {
+				v = v.Addr()
+			}
+		}
+	}
+	if ok && (v.Kind() != reflect.Ptr || !v.IsNil()) {
+		b, err := m.MarshalJSON()
+		if err != nil {
+			e.error(&MarshalerError{v.Type(), err})
+		}
+		// TODO: canonicalize this json
+		e.Buffer.Write(b)
 		return
 	}
 
