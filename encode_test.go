@@ -23,7 +23,7 @@ func TestCanonicalization(t *testing.T) {
 }
 
 func TestFloatError(t *testing.T) {
-	input := struct{ A float64 }{1.0}
+	input := struct{ A float64 }{1.1}
 
 	_, err := Marshal(input)
 	if err == nil {

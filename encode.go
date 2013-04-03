@@ -7,6 +7,7 @@ package cjson
 import (
 	"bytes"
 	"encoding/base64"
+	"math"
 	"reflect"
 	"runtime"
 	"sort"
@@ -192,7 +193,16 @@ func (e *encodeState) reflectValueQuoted(v reflect.Value, quoted bool) {
 			e.Write(b)
 		}
 	case reflect.Float32, reflect.Float64:
-		e.error(&UnsupportedValueError{v, "floating point number"})
+		f := v.Float()
+		if math.IsInf(f, 0) || math.IsNaN(f) || math.Floor(f) != f {
+			e.error(&UnsupportedValueError{v, "floating point number"})
+		}
+		b := strconv.AppendInt(e.scratch[:0], int64(f), 10)
+		if quoted {
+			writeString(e, string(b))
+		} else {
+			e.Write(b)
+		}
 	case reflect.String:
 		if v.Type() == numberType {
 			numStr := v.String()
