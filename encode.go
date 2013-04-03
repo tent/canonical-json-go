@@ -7,6 +7,7 @@ package cjson
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"math"
 	"reflect"
 	"runtime"
@@ -159,7 +160,20 @@ func (e *encodeState) reflectValueQuoted(v reflect.Value, quoted bool) {
 		if err != nil {
 			e.error(&MarshalerError{v.Type(), err})
 		}
-		// TODO: canonicalize this json
+
+		// canonicalize the json if it's an object
+		b = bytes.TrimSpace(b)
+		if len(b) > 0 && b[0] == '{' {
+			var temp interface{}
+			err = json.Unmarshal(b, &temp)
+			if err != nil {
+				e.error(&MarshalerError{v.Type(), err})
+			}
+			b, err = Marshal(temp)
+			if err != nil {
+				e.error(&MarshalerError{v.Type(), err})
+			}
+		}
 		e.Buffer.Write(b)
 		return
 	}
